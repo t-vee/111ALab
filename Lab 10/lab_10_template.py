@@ -135,7 +135,7 @@ def oscilloscope_run(ads_object: ADSHardware, duration: int, channel: int, sampl
     data["y"] = buffer
 
     # MODIFY THE LINE BELOW THIS ONE IN L10.2(d)
-    data["x"] = np.arange(buffer_size)
+    data["x"] = np.arange(buffer_size)*MS_CONVERSION/sampling_freq
 
     ads_object.close_scope()
     return data
@@ -155,8 +155,8 @@ def fft(data: dict):
     #avg_timestep below may be helpful for your call to np.fft.fftfreq...
     avg_timestep = np.mean(np.diff(data["x"])/MS_CONVERSION)
 
-    fft_result["frequencies"] = ...
-    fft_result["magnitudes"] = ...
+    fft_result["frequencies"] = np.fft.fftfreq(n = len(data['x']), d = avg_timestep)
+    fft_result["magnitudes"] = np.abs(np.fft.fft(data['y'], n = len(fft_result["frequencies"]), norm = 'forward'))
 
     return fft_result
 
