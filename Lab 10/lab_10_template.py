@@ -156,7 +156,7 @@ def fft(data: dict):
     avg_timestep = np.mean(np.diff(data["x"])/MS_CONVERSION)
 
     fft_result["frequencies"] = np.fft.fftfreq(n = len(data['x']), d = avg_timestep)
-    fft_result["magnitudes"] = np.abs(np.fft.fft(data['y'], n = len(fft_result["frequencies"]), norm = 'forward'))
+    fft_result["magnitudes"] = np.abs(np.fft.fft(data['y'])*2/len(data['y']))
 
     return fft_result
 
