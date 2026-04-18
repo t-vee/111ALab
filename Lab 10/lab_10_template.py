@@ -158,7 +158,10 @@ def fft(data: dict):
     fft_result["frequencies"] = np.fft.fftfreq(n = len(data['x']), d = avg_timestep)
     fft_result["magnitudes"] = np.abs(np.fft.fft(data['y'])*2/len(data['y']))
 
-    return fft_result
+    fft_final_result = {key: val[fft_result["frequencies"] > 0] for key, val in fft_result.items()}
+
+
+    return fft_final_result
 
 def butter_lowpass_filter(data, cutoff: float, fs: float, order=5):
     """Creates and applies a lowpass filter.
@@ -198,9 +201,9 @@ def demodulate_radio(data: dict, nu_3db: float, save=True):
     fs = len(data["x"] - 1)*MILLISECOND_CONVERSION / (data["x"][-1] - data["x"][0])
 
     #FILL IN THESE LINES FOR L10.5(c)
-    dc_offset_remove = ... #remove dc offset
-    rectified_data = ... #rectify
-    demod_data["y"] = ... #low pass
+    dc_offset_remove = data["y"] - np.mean(data["y"]) #remove dc offset
+    rectified_data =  np.abs(dc_offset_remove) #rectify the data
+    demod_data["y"] = butter_lowpass_filter(rectified_data, nu_3db, fs) #low pass
 
     #plot the different steps
     fig, axs = plt.subplots(2, 2)
@@ -225,7 +228,7 @@ def demodulate_radio(data: dict, nu_3db: float, save=True):
 
     #save the data if desired
     if save:
-        fname = os.path.join('./heartbeat_data', 'demod_lockin'+time.strftime("%Y%m%d-%H%M%S")+".txt")
+        fname = os.path.join('./heartbeat_data', 'demod_radio'+time.strftime("%Y%m%d-%H%M%S")+".txt")
         save_array = np.array([demod_data["x"], demod_data["y"]])
         np.savetxt(fname, save_array)
 
@@ -256,8 +259,13 @@ def demodulate_lockin(ads_object: ADSHardware, nu_mod: float, nu_3db: float, dur
                     offset_v=2.75, 
                     freq_hz=nu_mod, 
                     amp_v=1)
+    time.sleep(2) #so everything can 'settle' before data is collected
     data = oscilloscope_run(ads_object, channel=channel, duration=duration)
+
     ads_object.close_wavegen()
+
+    data["y"] = np.array(data["y"])
+    data["x"] = np.array(data["x"])
 
     #calculates average sampling frequency for digital filter
     fs = len(data["x"] - 1)*MILLISECOND_CONVERSION / (data["x"][-1] - data["x"][0])
@@ -271,26 +279,27 @@ def demodulate_lockin(ads_object: ADSHardware, nu_mod: float, nu_3db: float, dur
     demodulated_data["local_oscillator_sin"] = np.sin(omega*data["x"]/MILLISECOND_CONVERSION)
 
     #FILL IN THE BLANKS BELOW FOR L10.6(a)
-    #finds the cos and sin components of the signal read on the scope
-    demodulated_data["sin"] = ...
-    demodulated_data["cos"] = ...
+    #finds the cos and sin components of the signal read on the scope.
+    demodulated_data["sin"] = 2*data["y"]*demodulated_data["local_oscillator_sin"]
+    demodulated_data["cos"] = 2*data["y"]*demodulated_data["local_oscillator_cos"]
 
     #low pass filters the data
-    demodulated_data["lowpass_sin"] = ...
-    demodulated_data["lowpass_cos"] = ...
+    demodulated_data["lowpass_sin"] = butter_lowpass_filter(demodulated_data["sin"], nu_3db, fs)[500:-300]
+    demodulated_data["lowpass_cos"] = butter_lowpass_filter(demodulated_data["cos"], nu_3db, fs)[500:-300]
+    demodulated_data["x"] = demodulated_data["x"][500:-300]
 
     #adds sin and cos components in quadrature to obtain the demodulated signal
     demodulated_data["y"] = np.sqrt(demodulated_data["lowpass_cos"]**2 + demodulated_data["lowpass_sin"]**2)
 
     #plot the steps to get demodulated signal
     fig, axs = plt.subplots(2, 2)
-    axs[0, 0].plot(demodulated_data["x"], data["y"])
+    axs[0, 0].plot(data["x"], data["y"])
     axs[0, 0].set_title('Raw Signal')
-    axs[0, 1].plot(demodulated_data["x"], demodulated_data["sin"], 'tab:orange')
-    axs[0, 1].plot(demodulated_data["x"], demodulated_data["cos"], 'tab:green')
+    axs[0, 1].plot(data["x"], demodulated_data["sin"], 'tab:orange')
+    axs[0, 1].plot(data["x"], demodulated_data["cos"], 'tab:green')
     axs[0, 1].set_title('Sin & Cos components')
-    axs[1, 0].plot(demodulated_data["x"], demodulated_data["local_oscillator_cos"])
-    axs[1, 0].plot(demodulated_data["x"], demodulated_data["local_oscillator_sin"])
+    axs[1, 0].plot(data["x"], demodulated_data["local_oscillator_cos"])
+    axs[1, 0].plot(data["x"], demodulated_data["local_oscillator_sin"])
     axs[1, 0].set_title('Local oscillator')
     axs[1, 1].plot(demodulated_data["x"], demodulated_data["lowpass_cos"])
     axs[1, 1].plot(demodulated_data["x"], demodulated_data["lowpass_sin"])
