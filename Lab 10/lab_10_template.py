@@ -203,15 +203,16 @@ def demodulate_radio(data: dict, nu_3db: float, save=True):
     #FILL IN THESE LINES FOR L10.5(c)
     dc_offset_remove = data["y"] - np.mean(data["y"]) #remove dc offset
     rectified_data =  np.abs(dc_offset_remove) #rectify the data
-    demod_data["y"] = butter_lowpass_filter(rectified_data, nu_3db, fs) #low pass
+    demod_data["y"] = butter_lowpass_filter(rectified_data, nu_3db, fs)[500:-300] #low pass
+    demod_data["x"] = demod_data["x"][500:-300]
 
     #plot the different steps
     fig, axs = plt.subplots(2, 2)
-    axs[0, 0].plot(demod_data["x"], data["y"])
+    axs[0, 0].plot(data["x"], data["y"])
     axs[0, 0].set_title('Raw Signal (Vout)')
-    axs[0, 1].plot(demod_data["x"], dc_offset_remove, 'tab:orange')
+    axs[0, 1].plot(data["x"], dc_offset_remove, 'tab:orange')
     axs[0, 1].set_title('DC Offset Removed')
-    axs[1, 0].plot(demod_data["x"], rectified_data, 'tab:green')
+    axs[1, 0].plot(data["x"], rectified_data, 'tab:green')
     axs[1, 0].set_title('Rectified (Vout1)')
     axs[1, 1].plot(demod_data["x"], demod_data["y"], 'tab:red')
     axs[1, 1].set_title('Low Pass Filtered (Vout2)')
