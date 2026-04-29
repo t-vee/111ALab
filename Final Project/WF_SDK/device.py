@@ -201,13 +201,13 @@ def open(device=None, config=0):
             # check the error message
             check_error()
     
-    global data
-    data.handle = device_handle
-    data.name = device_name
-    print("Connected to " + data.name)
-    print("Device handle: " + str(data.handle.value))
-    data = __get_info__(data)
-    return data
+    device_data = data()
+    device_data.handle = device_handle
+    device_data.name = device_name
+    print("Connected to " + device_data.name)
+    print("Device handle: " + str(device_data.handle.value))
+    device_data = __get_info__(device_data)
+    return device_data
 
 """-----------------------------------------------------------------------"""
 
@@ -239,8 +239,8 @@ def close(device_data):
     """
     if device_data.handle != 0:
         dwf.FDwfDeviceClose(device_data.handle)
-    data.handle = ctypes.c_int(0)
-    data.name = ""
+    device_data.handle = ctypes.c_int(0)
+    device_data.name = ""
     return
 
 """-----------------------------------------------------------------------"""
